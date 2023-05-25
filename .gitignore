@@ -1,5 +1,9 @@
 # Archivos
+*
+!/**/
+!*.*
 *.docx
 *.xlsx
 *.zip
+
 
