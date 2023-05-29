@@ -16,4 +16,6 @@ int main() {
 }
 
 // ¿En qué estado se encuentra el padre?, ¿por qué?
-// R: 
+// R: El padre aún se encuentra activo, porque uno de sus procesos
+// hijo aún no termina su ejecución para el momento en el que el
+// padre mismo termina
