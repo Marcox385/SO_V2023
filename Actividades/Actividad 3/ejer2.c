@@ -21,17 +21,22 @@
 int i;
 
 int main(int argc, char *argv[]) { // FALTA CORREGIR
-    int nivel = atoi(argv[1]), counter = 0, p;
+    // int nivel = atoi(argv[1]), counter = 0, p;
 
-    printf("%d", counter);
+    // printf("%d", counter);
 
-    for (i = 0; i < nivel; i++) {
-        p = fork();
-        counter++;
+    // for (i = 0; i < nivel; i++) {
+    //     p = fork();
+    //     counter++;
 
-        if (p == 0) printf(",%d", counter);
-    }
+    //     if (p == 0) printf(",%d", counter);
+    // }
 
-    wait(NULL);
-    printf("\n");
+    // wait(NULL);
+    // printf("\n");
+    printf("0");
+    fork();
+    printf(",1");
+    fork();
+    printf(",2");
 }
