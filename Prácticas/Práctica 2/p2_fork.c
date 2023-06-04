@@ -1,3 +1,12 @@
+/*
+    Práctica 2
+    Cálculo de PI a través de regla del trapecio - Versión con Procesos
+
+    Equipo 3
+    IS727223 - Paez Aguilar, Carlos Andrés
+    IS727272 - Cordero Hernández, Marco Ricardo
+*/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -60,7 +69,6 @@ int main() {
             exit(0);
         }
     }
-
 
     //Esperar a que terminen los procesos hijos
     for(int i = 0; i < NPROCESS; i++) {

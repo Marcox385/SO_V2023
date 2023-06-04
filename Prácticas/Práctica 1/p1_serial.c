@@ -1,4 +1,5 @@
 /*
+    Práctica 1
     Cálculo de PI a través de regla del trapecio - Versión Serial
 
     Equipo 3
