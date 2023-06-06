@@ -4,7 +4,9 @@
 !*.*
 !Make*
 *.docx
+*.svg
 *.xlsx
 *.zip
 
-
+# Directorios
+Actividades/Actividad 8/ULTs
