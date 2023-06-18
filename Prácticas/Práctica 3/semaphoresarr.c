@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include "semaphoresarr.h"
 
 void semwait(int semid,int nsem)
@@ -31,11 +32,20 @@ int createsemarray(int key, int nsems)
 
 void initsem(int semid,int semnum,int value)
 {
-	semctl(semid,semnum,SETVAL,value);	
+	semctl(semid,semnum,SETVAL,value);
+	int value2 = semctl(semid,semnum,GETVAL,0);
+	printf("semid: %d, semnum: %d, value: %d\n", semid, semnum, value2);	
 }
 
 void erasesem(int semid)
 {
 	semctl(semid,0,IPC_RMID,0);	// Eliminar el arreglo de semaforos
 	return;
+}
+
+int getvalsem(int semid,int semnum)
+{
+	int value;
+	value=semctl(semid,semnum,GETVAL,0);
+	return(value);
 }

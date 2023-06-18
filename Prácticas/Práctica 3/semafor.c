@@ -53,9 +53,9 @@ void proc(int proc_num) {
     // Ciclo intercalado con múltiplos de NPROCS
     for(i = proc_num; i < SERIES_MEMBER_COUNT; i += NPROCS)
         sums[proc_num] += get_member(i+1, x); // Sumar término de la serie
-    semsignal(semarr, SYNC1);
-    semsignal(semarr, SYNC2); // Indicar que un proceso ha terminado
-
+    if(getvalsem(semarr, SYNC1) == 0){
+        semsignal(semarr, SYNC2); // Indicar que un proceso ha terminado
+    }
     exit(0);
 }
 
@@ -63,9 +63,7 @@ void proc(int proc_num) {
 void master_proc() {
     int i;
 
-    sleep(1);
-    semsignal(semarr, SYNC1); 
-
+    // sleep(1);
     semwait(semarr, SYNC2);    
     // Variable y ciclo para sumar resultado final
     *res = 0;
@@ -97,9 +95,8 @@ int main() {
     semarr = createsemarray(0x4321, 2);
 
     // Inicialización de semáforos
-    initsem(semarr, SYNC1, 0);
+    initsem(semarr, SYNC1, 4);
     initsem(semarr, SYNC2, 0);
-
     // Inicialización de memoria compartida
     shmid = shmget(0x1234, NPROCS * sizeof(double) + 2 * sizeof(int), 0666|IPC_CREAT);
     shmstart = shmat(shmid, NULL, 0);

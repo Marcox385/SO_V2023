@@ -9,3 +9,4 @@ void semsignal(int semid,int nsem);
 int createsemarray(int key, int nsems);
 void initsem(int semid,int semnum,int value);
 void erasesem(int semid);
+int getvalsem(int semid,int semnum);
