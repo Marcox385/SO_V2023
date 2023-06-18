@@ -12,15 +12,20 @@
 #include <sys/time.h>
 #include <sys/wait.h>
 #include <sys/shm.h>
+#include "semaphoresarr.h"
 
 #define NPROCS 4 // Número de procesos
 #define SERIES_MEMBER_COUNT 200000 // Términos del cálculo
+#define SYNC1 0 // Semáforo para sincronización
+#define SYNC2 1 // Semáforo para sincronización
 
 double *sums; // Arreglo de sumas parciales
 double x = 0.5; // Desplazamiento en el cálculo (-1, 1]
 int *proc_count; // Conteo de procesos terinados
 int *start_all; // Bandera para inicialización de todos los procesos desde master
 double *res; // Resultado final de la operación
+int semarr;
+
 
 // Función para obtener término de la serie
 double get_member(int n, double x) {
@@ -41,14 +46,15 @@ double get_member(int n, double x) {
 // Código para procesos individuales
 void proc(int proc_num) {
     int i;
-    while(!(*start_all)); // Espera ocupada
+    semwait(semarr, SYNC1); 
+    printf("Proceso %d iniciado\n", proc_num);
     sums[proc_num] = 0;
 
     // Ciclo intercalado con múltiplos de NPROCS
     for(i = proc_num; i < SERIES_MEMBER_COUNT; i += NPROCS)
         sums[proc_num] += get_member(i+1, x); // Sumar término de la serie
-    
-    (*proc_count)++; // Indicar que un proceso ha terminado
+    semsignal(semarr, SYNC1);
+    semsignal(semarr, SYNC2); // Indicar que un proceso ha terminado
 
     exit(0);
 }
@@ -58,10 +64,9 @@ void master_proc() {
     int i;
 
     sleep(1);
-    *start_all = 1;
+    semsignal(semarr, SYNC1); 
 
-    while (*proc_count != NPROCS) {} // Espera ocupada (esperando a procesos individuales)
-    
+    semwait(semarr, SYNC2);    
     // Variable y ciclo para sumar resultado final
     *res = 0;
     for(i = 0; i < NPROCS; i++)
@@ -88,6 +93,14 @@ int main() {
     int shmid;
     void *shmstart;
 
+    //Semaphores
+    semarr = createsemarray(0x4321, 2);
+
+    // Inicialización de semáforos
+    initsem(semarr, SYNC1, 0);
+    initsem(semarr, SYNC2, 0);
+
+    // Inicialización de memoria compartida
     shmid = shmget(0x1234, NPROCS * sizeof(double) + 2 * sizeof(int), 0666|IPC_CREAT);
     shmstart = shmat(shmid, NULL, 0);
     sums = shmstart;
@@ -127,6 +140,7 @@ int main() {
 
     printf("El resultado es %10.8f\n", *res);
     printf("Llamando a la función ln(1 + %f) = %10.8f\n", x, log(1+x));
+    printf("TIEMPO DE EJECUCIÓN: %lld segundos\n", elapsed_time);
     
     // Remover memoria compartida
     shmdt(shmstart);

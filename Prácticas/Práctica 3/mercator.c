@@ -42,6 +42,7 @@ double get_member(int n, double x) {
 void proc(int proc_num) {
     int i;
     while(!(*start_all)); // Espera ocupada
+    printf("Proceso %d iniciado\n", proc_num);
     sums[proc_num] = 0;
 
     // Ciclo intercalado con múltiplos de NPROCS
@@ -127,7 +128,7 @@ int main() {
 
     printf("El resultado es %10.8f\n", *res);
     printf("Llamando a la función ln(1 + %f) = %10.8f\n", x, log(1+x));
-    
+    printf("TIEMPO DE EJECUCIÓN: %lld segundos\n", elapsed_time);
     // Remover memoria compartida
     shmdt(shmstart);
     shmctl(shmid,IPC_RMID,NULL);
