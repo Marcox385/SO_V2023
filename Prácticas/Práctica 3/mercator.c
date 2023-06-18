@@ -1,4 +1,12 @@
 /*
+    Práctica 3
+    Cálculo de ln(1 + x) a través de la serie de Mercator - Versión con espera ocupada
+
+    Equipo 3
+    IS727223 - Paez Aguilar, Carlos Andrés
+    IS727272 - Cordero Hernández, Marco Ricardo
+
+
     Para compilar incluir la librería m (matemáticas)
 
     Ejemplo:
