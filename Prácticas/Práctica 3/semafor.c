@@ -16,15 +16,15 @@
 
 #define NPROCS 4 // Número de procesos
 #define SERIES_MEMBER_COUNT 200000 // Términos del cálculo
-#define SYNC1 0 // Semáforo para sincronización
-#define SYNC2 1 // Semáforo para sincronización
+
+enum {SYNC1, SYNC2}; // Identificadores de semáforos para sincronización
 
 double *sums; // Arreglo de sumas parciales
 double x = 0.5; // Desplazamiento en el cálculo (-1, 1]
 int *proc_count; // Conteo de procesos terinados
 int *start_all; // Bandera para inicialización de todos los procesos desde master
 double *res; // Resultado final de la operación
-int semarr;
+int semarr; // Identificador de segmento en memoria de semáforos
 
 // Función para obtener término de la serie
 double get_member(int n, double x) {
@@ -45,16 +45,17 @@ double get_member(int n, double x) {
 // Código para procesos individuales
 void proc(int proc_num) {
     int i;
-    semwait(semarr, SYNC1); 
+    semwait(semarr, SYNC1); // Esperar a que todos los procesos hayan sido inicializados
     printf("Proceso %d iniciado\n", proc_num);
     sums[proc_num] = 0;
 
     // Ciclo intercalado con múltiplos de NPROCS
     for(i = proc_num; i < SERIES_MEMBER_COUNT; i += NPROCS)
         sums[proc_num] += get_member(i+1, x); // Sumar término de la serie
-    if(getvalsem(semarr, SYNC1) == 0){
+
+    if (getvalsem(semarr, SYNC1) == 0)
         semsignal(semarr, SYNC2); // Indicar que un proceso ha terminado
-    }
+
     exit(0);
 }
 
@@ -63,7 +64,8 @@ void master_proc() {
     int i;
 
     // sleep(1);
-    semwait(semarr, SYNC2);    
+    semwait(semarr, SYNC2); // Esperar a que los procesos individuales hayan finalizado
+
     // Variable y ciclo para sumar resultado final
     *res = 0;
     for(i = 0; i < NPROCS; i++)
@@ -73,7 +75,7 @@ void master_proc() {
 }
 
 int main() {
-    int *threadIdPtr; // APUNTADOR NO UTILIZADO
+    // int *threadIdPtr; // APUNTADOR NO UTILIZADO
 
     // Variables para tiempo de ejecución
     long long start_ts;
@@ -90,12 +92,13 @@ int main() {
     int shmid;
     void *shmstart;
 
-    //Semaphores
+    // Semaphores
+    // Dos semáfaros -> [0] := Control de procesos; [1] := Espera de procesos
     semarr = createsemarray(0x4321, 2);
 
     // Inicialización de semáforos
-    initsem(semarr, SYNC1, 0);
-    initsem(semarr, SYNC2, -4);
+    initsem(semarr, SYNC1, NPROCS); // NPROCS = Número de esclavos
+    initsem(semarr, SYNC2, 0); // Para bloqueo inicial del proceso maestro
 
     // Inicialización de memoria compartida
     shmid = shmget(0x1234, NPROCS * sizeof(double) + 2 * sizeof(int), 0666|IPC_CREAT);
@@ -114,19 +117,20 @@ int main() {
     // Inicio de procesos individuales
     for(i = 0; i < NPROCS; i++) {
         p = fork();
-        if(p==0)
+        if ( p== 0)
             proc(i);
     }
 
     // Inicio de proceso master
     p = fork();
-    if(p==0)
+    if (p == 0)
         master_proc();
     
+    // Muestra de resultados y retorno de tiempo total de ejecución
     printf("El recuento de ln(1 + x) miembros de la serie de Mercator es %d\n", SERIES_MEMBER_COUNT);
     printf("El valor del argumento x es %f\n", (double)x);
 
-    for(int i = 0; i < NPROCS + 1; i++)
+    for (int i = 0; i < NPROCS + 1; i++)
         wait(NULL);
 
     gettimeofday(&ts, NULL);
@@ -139,7 +143,8 @@ int main() {
     printf("Llamando a la función ln(1 + %f) = %10.8f\n", x, log(1+x));
     printf("TIEMPO DE EJECUCIÓN: %lld segundos\n", elapsed_time);
     
-    // Remover memoria compartida
+    // Remover memoria compartida y semáforos
     shmdt(shmstart);
-    shmctl(shmid,IPC_RMID,NULL);
+    shmctl(shmid, IPC_RMID, NULL);
+    erasesem(semarr);
 }
