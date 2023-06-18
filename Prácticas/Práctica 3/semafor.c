@@ -2,7 +2,7 @@
     Para compilar incluir la librería m (matemáticas)
 
     Ejemplo:
-        gcc -o mercator mercator.c -lm
+        gcc -o semafor semafor.c semaphoresarr.c -lm
 */
 
 #include <stdio.h>
@@ -25,7 +25,6 @@ int *proc_count; // Conteo de procesos terinados
 int *start_all; // Bandera para inicialización de todos los procesos desde master
 double *res; // Resultado final de la operación
 int semarr;
-
 
 // Función para obtener término de la serie
 double get_member(int n, double x) {
@@ -95,8 +94,9 @@ int main() {
     semarr = createsemarray(0x4321, 2);
 
     // Inicialización de semáforos
-    initsem(semarr, SYNC1, 4);
-    initsem(semarr, SYNC2, 0);
+    initsem(semarr, SYNC1, 0);
+    initsem(semarr, SYNC2, -4);
+
     // Inicialización de memoria compartida
     shmid = shmget(0x1234, NPROCS * sizeof(double) + 2 * sizeof(int), 0666|IPC_CREAT);
     shmstart = shmat(shmid, NULL, 0);
