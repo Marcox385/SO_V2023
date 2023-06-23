@@ -10,7 +10,7 @@
     Para compilar incluir la librería m (matemáticas)
 
     Ejemplo:
-        gcc -o mercator mercator.c -lm
+        gcc -o msgs msgs.c -lm
 */
 
 #include <stdio.h>
@@ -18,7 +18,6 @@
 #include <unistd.h>
 #include <math.h>
 #include <sys/time.h>
-#include <string.h>
 #include <sys/wait.h>
 #include <sys/types.h>
 #include <sys/ipc.h>
@@ -26,14 +25,9 @@
 
 #define NPROCS 4 // Número de procesos
 #define SERIES_MEMBER_COUNT 200000 // Términos del cálculo
-#define IPC_WAIT 0
-#define PROCESS_END NPROCS + 1
+#define IPC_WAIT 0 // Espera bloqueante (se podría utilizar IPC_RMID)
 
-double *sums;    // Arreglo de sumas parciales
 double x = 0.5;  // Desplazamiento en el cálculo (-1, 1]
-int *proc_count; // Conteo de procesos terinados
-int *start_all;  // Bandera para inicialización de todos los procesos desde master
-// double *res;     // Resultado final de la operación
 
 // Componentes para el buzón de mensajes
 int mb_id;       // Identificador del buzón
@@ -62,21 +56,17 @@ double get_member(int n, double x) {
 // Código para procesos individuales
 void proc(int proc_num) {
     int i;
-    struct msgbuf mensaje;
-    // while(!(*start_all)); // Espera ocupada
+    struct msgbuf mensaje; // Manejador para operaciones de mensajería
 
     msgrcv(mb_id, &mensaje, sizeof(struct msgbuf), proc_num, IPC_WAIT);
 
     printf("Proceso %d iniciado\n", proc_num);
-    // sums[proc_num] = 0;
-    double local_sum = 0;
+    double local_sum = 0; // Resultado parcial de proceso esclavo
 
     // Ciclo intercalado con múltiplos de NPROCS
     for(i = proc_num - 1; i < SERIES_MEMBER_COUNT; i += NPROCS)
-        // sums[proc_num] += get_member(i+1, x); // Sumar término de la serie
-        local_sum += get_member(i+1, x); // Sumar término de la serie
+        local_sum += get_member(i + 1, x); // Sumar término de la serie
     
-    // (*proc_count)++; // Indicar que un proceso ha terminado
     mensaje.mtype = proc_num;
     mensaje.num = local_sum;
     msgsnd(mb_id, &mensaje, sizeof(struct msgbuf), IPC_WAIT);
@@ -87,40 +77,22 @@ void proc(int proc_num) {
 // Código para proceso master
 void master_proc() {
     int i;
-    struct msgbuf mensaje;
-    double result = 0.0;
-    double holder;
+    struct msgbuf mensaje; // Manejador para operaciones de mensajería
+    double result = 0.0; // Contenedor para resultados parciales de procesos esclavos
+    double holder; // Variable para redireccionar bits de msgrcv de procesos esclavos
 
     sleep(1);
-    // *start_all = 1;
 
     for (i = 0; i < NPROCS; i++) {
         mensaje.mtype = i + 1;
         msgsnd(mb_id, &mensaje, sizeof(struct msgbuf), IPC_NOWAIT);
     }
 
-    // while (*proc_count != NPROCS) {} // Espera ocupada (esperando a procesos individuales)
-
-    // for (i = 0; i < NPROCS; i++) {
-    //     msgrcv(mb_id, &mensaje, sizeof(struct msgbuf), 0, IPC_WAIT);
-    //     printf("Proceso %d terminado - RESULTADO INDIVIDUAL %10.8f\n", i + 1, mensaje.num);
-    //     printf("Previous result %10.8f\n", result);
-    //     result += mensaje.num;
-    //     printf("Summed result %10.8f\n", result);
-    // }
-
     do {
         holder = msgrcv(mb_id, &mensaje, sizeof(struct msgbuf), 0, IPC_WAIT);  
         result += (double)mensaje.num;
     } while (--i > 0);
     
-    // Variable y ciclo para sumar resultado final
-    // *res = 0;
-    // for(i = 0; i < NPROCS; i++)
-    //     *res += sums[i];
-
-    printf("DEBUG - RESULT %10.8f\n", result);
-
     mensaje.num = result;
     msgsnd(mb_id, &mensaje, sizeof(struct msgbuf), IPC_WAIT);
     
@@ -128,8 +100,6 @@ void master_proc() {
 }
 
 int main() {
-    // int *threadIdPtr; // APUNTADOR NO UTILIZADO
-
     // Variables para tiempo de ejecución
     long long start_ts;
     long long stop_ts;
@@ -140,22 +110,9 @@ int main() {
     // Variables de control
     int i;
     int p;
-    double res;
-    struct msgbuf mensaje;
 
-    // Variables de memoria compartida
-    // int shmid;
-    // void *shmstart;
-
-    // shmid = shmget(0x1234, NPROCS * sizeof(double) + 2 * sizeof(int), 0666|IPC_CREAT);
-    // shmstart = shmat(shmid, NULL, 0);
-    // sums = shmstart;
-    // proc_count = shmstart + NPROCS * sizeof(double);
-    // start_all = shmstart + NPROCS * sizeof(double) + sizeof(int);
-    // res = shmstart + NPROCS * sizeof(double) + 2 * sizeof(int);
-    
-    // *proc_count = 0;
-    // *start_all = 0;
+    double res; // Total del cálculo
+    struct msgbuf mensaje; // Contenedor para resultado
 
     gettimeofday(&ts, NULL);
     start_ts = ts.tv_sec; // Tiempo inicial
@@ -171,7 +128,7 @@ int main() {
     for(i = 0; i < NPROCS; i++) {
         p = fork();
         if(p==0)
-            proc(i + 1);
+            proc(i + 1); // Se suma + 1 para manejar el tipo de mensajes
     }
 
     // Inicio de proceso master
@@ -185,8 +142,9 @@ int main() {
     for(int i = 0; i < NPROCS; i++)
         wait(NULL);
 
+    // Recibir y almacenar total del cálculo
     msgrcv(mb_id, &mensaje, sizeof(struct msgbuf), 0, IPC_WAIT);
-    res = mensaje.num;
+    res = mensaje.num; // Variable omisible pero conservada para legibilidad
 
     gettimeofday(&ts, NULL);
     stop_ts = ts.tv_sec; // Tiempo final
@@ -194,14 +152,10 @@ int main() {
 
     printf("Tiempo = %lld segundos\n", elapsed_time);
 
-    printf("El resultado es %10.8f\n", res);
-    printf("Llamando a la función ln(1 + %f) = %10.8f\n", x, log(1+x));
+    printf("Resultado obtenido -> ln(1 + %f) = %10.8f\n", x, res);
+    printf("Resultado esperado -> ln(1 + %f) = %10.8f\n", x, log(1+x));
     printf("TIEMPO DE EJECUCIÓN: %lld segundos\n", elapsed_time);
 
-    // Remover memoria compartida
-    // shmdt(shmstart);
-    // shmctl(shmid,IPC_RMID,NULL);
-
-    // Remover buzón
+    // Remover buzón/cola de mensajes
     msgctl(mb_id, IPC_RMID, NULL);
 }
